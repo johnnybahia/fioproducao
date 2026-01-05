@@ -419,10 +419,23 @@ function buscarFioHistorico(item) {
           item: itemLinha,
           usuario: usuario,
           localizacao: localizacao,
-          data: dataFormatada
+          data: dataFormatada,
+          dataRaw: data  // Guarda a data original para ordenação
         });
       }
     }
+
+    // Ordenar por data: mais recente primeiro
+    resultados.sort(function(a, b) {
+      const dataA = a.dataRaw ? new Date(a.dataRaw).getTime() : 0;
+      const dataB = b.dataRaw ? new Date(b.dataRaw).getTime() : 0;
+      return dataB - dataA; // Decrescente (mais recente primeiro)
+    });
+
+    // Remover dataRaw antes de retornar
+    resultados.forEach(function(r) {
+      delete r.dataRaw;
+    });
 
     Logger.log('Encontrados ' + resultados.length + ' registros no histórico para "' + item + '"');
 
