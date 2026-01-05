@@ -435,6 +435,119 @@ function buscarFioHistorico(item) {
   }
 }
 
+/**
+ * Busca itens que existem na aba histórico (coluna C)
+ * Similar à buscarItens, mas filtra apenas itens presentes no histórico
+ */
+function buscarItensHistorico(termo, limite) {
+  try {
+    Logger.log('=== buscarItensHistorico: "' + termo + '" ===');
+
+    if (!termo || termo.length < 1) {
+      Logger.log('Termo vazio, retornando vazio');
+      return [];
+    }
+
+    const maxResultados = limite || 30;
+    const termoNormalizado = String(termo)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+
+    const ss = getSS_();
+    const wsHistorico = _getSheetByNames_(ss, ["historico", "Historico", "Histórico", "HISTORICO"]);
+
+    if (!wsHistorico || wsHistorico.getLastRow() < 2) {
+      Logger.log('Aba histórico vazia ou não encontrada');
+      return [];
+    }
+
+    const totalRows = wsHistorico.getLastRow() - 1;
+    Logger.log('Total de linhas no histórico: ' + totalRows);
+
+    // Ler coluna C (item) do histórico
+    const idsVals = wsHistorico.getRange(2, 3, totalRows, 1).getValues(); // Coluna C = índice 3
+
+    // Criar conjunto de IDs únicos do histórico
+    const idsHistorico = new Set();
+    for (let i = 0; i < idsVals.length; i++) {
+      const id = _normalizeId_(idsVals[i][0]);
+      if (id && _isValidItemId_(id)) {
+        idsHistorico.add(id);
+      }
+    }
+
+    Logger.log('Total de itens únicos no histórico: ' + idsHistorico.size);
+
+    // Carregar nomes da aba PRODUTOS
+    const wsProdutos = _getSheetByNames_(ss, ["PRODUTOS", "Produtos", "produtos"]);
+    const mapNome = new Map();
+
+    if (wsProdutos && wsProdutos.getLastRow() >= 2) {
+      const prodRows = wsProdutos.getRange(2, 1, wsProdutos.getLastRow() - 1, 2).getValues();
+      prodRows.forEach(r => {
+        const id = _normalizeId_(r[0]);
+        if (id && _isValidItemId_(id)) {
+          mapNome.set(id, String(r[1] || id));
+        }
+      });
+    }
+
+    // Busca priorizada: itens que começam com o termo aparecem primeiro
+    const resultadosExatos = [];  // Começam com o termo (startsWith)
+    const resultadosOutros = [];  // Contêm o termo (includes)
+    const vistos = new Set();
+
+    // Filtrar apenas IDs que estão no histórico
+    for (const id of idsHistorico) {
+      if (vistos.has(id)) continue;
+
+      const nome = mapNome.get(id) || id;
+
+      // Normalizar para busca
+      const idNorm = id.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const nomeNorm = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+      const item = {
+        id: id,
+        nome: nome,
+        setor: '',
+        label: nome && nome !== id ? `${id} - ${nome}` : id
+      };
+
+      // Prioridade 1: ID ou nome começam com o termo
+      if (idNorm.startsWith(termoNormalizado) || nomeNorm.startsWith(termoNormalizado)) {
+        resultadosExatos.push(item);
+        vistos.add(id);
+      }
+      // Prioridade 2: ID ou nome contêm o termo em qualquer posição
+      else if (idNorm.includes(termoNormalizado) || nomeNorm.includes(termoNormalizado)) {
+        resultadosOutros.push(item);
+        vistos.add(id);
+      }
+    }
+
+    // Ordenar cada categoria alfabeticamente por ID
+    resultadosExatos.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+    resultadosOutros.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true, sensitivity: 'base' }));
+
+    // Combinar: exatos primeiro, depois outros, respeitando o limite
+    const resultados = [...resultadosExatos, ...resultadosOutros].slice(0, maxResultados);
+
+    Logger.log('Encontrados ' + resultados.length + ' resultados no histórico para "' + termo + '"');
+    Logger.log('  - Exatos (começam com termo): ' + resultadosExatos.length);
+    Logger.log('  - Outros (contêm termo): ' + resultadosOutros.length);
+
+    return resultados;
+
+  } catch (e) {
+    Logger.log('ERRO em buscarItensHistorico: ' + e.message);
+    Logger.log('Stack: ' + e.stack);
+    return [];
+  }
+}
+
 /** =========================
  * Pedidos
  * ========================= */
