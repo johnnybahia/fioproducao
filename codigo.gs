@@ -357,6 +357,84 @@ function buscarItens(termo, limite) {
     return [];
   }
 }
+
+/** =========================
+ * Localizar Fio no Histórico
+ * ========================= */
+function buscarFioHistorico(item) {
+  try {
+    Logger.log('=== buscarFioHistorico: "' + item + '" ===');
+
+    if (!item || String(item).trim().length === 0) {
+      Logger.log('Item vazio, retornando vazio');
+      return [];
+    }
+
+    const itemNormalizado = _normalizeId_(item);
+
+    const ss = getSS_();
+    const wsHistorico = _getSheetByNames_(ss, ["historico", "Historico", "Histórico", "HISTORICO"]);
+
+    if (!wsHistorico || wsHistorico.getLastRow() < 2) {
+      Logger.log('Aba historico vazia ou não encontrada');
+      return [];
+    }
+
+    const totalRows = wsHistorico.getLastRow() - 1;
+    Logger.log('Total de linhas no histórico: ' + totalRows);
+
+    // Ler todas as colunas necessárias: C (item), P (usuário), Q (localização), R (data)
+    // Coluna C = índice 3, P = 16, Q = 17, R = 18
+    const dados = wsHistorico.getRange(2, 1, totalRows, 18).getValues();
+
+    const resultados = [];
+
+    for (let i = 0; i < dados.length; i++) {
+      const linha = dados[i];
+      const itemLinha = _normalizeId_(linha[2]); // Coluna C (índice 2)
+
+      if (itemLinha === itemNormalizado) {
+        const usuario = String(linha[15] || 'Não informado'); // Coluna P (índice 15)
+        const localizacao = String(linha[16] || 'Não informado'); // Coluna Q (índice 16)
+        const data = linha[17] || null; // Coluna R (índice 17)
+
+        let dataFormatada = 'Não informado';
+        if (data) {
+          try {
+            const d = new Date(data);
+            if (!isNaN(d.getTime())) {
+              const dia = String(d.getDate()).padStart(2, '0');
+              const mes = String(d.getMonth() + 1).padStart(2, '0');
+              const ano = d.getFullYear();
+              const horas = String(d.getHours()).padStart(2, '0');
+              const minutos = String(d.getMinutes()).padStart(2, '0');
+              dataFormatada = dia + '/' + mes + '/' + ano + ' ' + horas + ':' + minutos;
+            }
+          } catch (e) {
+            Logger.log('Erro ao formatar data: ' + e.message);
+          }
+        }
+
+        resultados.push({
+          item: itemLinha,
+          usuario: usuario,
+          localizacao: localizacao,
+          data: dataFormatada
+        });
+      }
+    }
+
+    Logger.log('Encontrados ' + resultados.length + ' registros no histórico para "' + item + '"');
+
+    return resultados;
+
+  } catch (e) {
+    Logger.log('ERRO em buscarFioHistorico: ' + e.message);
+    Logger.log('Stack: ' + e.stack);
+    return [];
+  }
+}
+
 /** =========================
  * Pedidos
  * ========================= */
