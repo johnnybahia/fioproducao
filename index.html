@@ -155,7 +155,7 @@
               >
               <div id="fio-autocomplete-dropdown" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
             </div>
-            <small id="fio-hint" class="text-xs text-gray-500 mt-1 block">Digite para buscar em todos os itens</small>
+            <small id="fio-hint" class="text-xs text-gray-500 mt-1 block">Digite para buscar itens do histórico</small>
           </div>
 
           <div class="flex items-center justify-end gap-2">
@@ -1034,14 +1034,14 @@
     function buscarItensFioAutocomplete(termo) {
       const dropdown = document.getElementById('fio-autocomplete-dropdown');
 
-      console.log('🔍 Buscando itens para fio com termo:', termo);
+      console.log('🔍 Buscando itens do histórico com termo:', termo);
 
       google.script.run
         .withSuccessHandler(function(resultados) {
-          console.log('✅ Resultados recebidos para fio:', resultados.length);
+          console.log('✅ Resultados recebidos do histórico:', resultados.length);
 
           if (!Array.isArray(resultados) || resultados.length === 0) {
-            dropdown.innerHTML = '<div class="p-3 text-gray-500 text-sm">Nenhum item encontrado</div>';
+            dropdown.innerHTML = '<div class="p-3 text-gray-500 text-sm">Nenhum item encontrado no histórico</div>';
             dropdown.classList.remove('hidden');
             return;
           }
@@ -1063,15 +1063,15 @@
 
           const hint = document.getElementById('fio-hint');
           if (hint) {
-            hint.textContent = `${resultados.length} ${resultados.length === 30 ? '(primeiros)' : ''} itens encontrados`;
+            hint.textContent = `${resultados.length} ${resultados.length === 30 ? '(primeiros)' : ''} itens encontrados no histórico`;
           }
         })
         .withFailureHandler(function(erro) {
-          console.error('❌ Erro ao buscar itens para fio:', erro);
+          console.error('❌ Erro ao buscar itens do histórico:', erro);
           dropdown.innerHTML = '<div class="p-3 text-red-500 text-sm">Erro ao buscar itens</div>';
           showToast('Erro ao buscar itens: ' + erro.message, 'error');
         })
-        .buscarItens(termo, 30);
+        .buscarItensHistorico(termo, 30);
     }
 
     function selecionarItemFio(id, label) {
